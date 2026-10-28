@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <title>AI 채용정보 - 사람인 · 잡코리아</title>
 <style>
   :root {
@@ -55,6 +57,11 @@
   .badge.saramin { background: var(--saramin); }
   .badge.jobkorea { background: var(--jobkorea); }
   .total-count { color: var(--muted); font-size: 0.85rem; font-weight: 400; }
+  .section-title h2 { margin: 0; font-size: inherit; font-weight: inherit; }
+  @media (prefers-reduced-motion: reduce) {
+    .job-card { transition: none; }
+    .job-card:hover { transform: none; }
+  }
   .card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -118,17 +125,17 @@
 <main>
   <div class="section-title">
     <span class="badge saramin">사람인</span>
-    AI 채용공고
-    <span class="total-count">(총 12,558건 중 56건 표시)</span>
+    <h2>AI 채용공고</h2>
+    <span class="total-count" id="saramin-count"></span>
   </div>
-  <div class="card-grid" id="saramin-grid"></div>
+  <div class="card-grid" id="saramin-grid" role="list"></div>
 
   <div class="section-title">
     <span class="badge jobkorea">잡코리아</span>
-    AI 채용공고
-    <span class="total-count">(총 12,126건 중 13건 표시)</span>
+    <h2>AI 채용공고</h2>
+    <span class="total-count" id="jobkorea-count"></span>
   </div>
-  <div class="card-grid" id="jobkorea-grid"></div>
+  <div class="card-grid" id="jobkorea-grid" role="list"></div>
 </main>
 
 <footer>
@@ -211,23 +218,38 @@ const jobkoreaJobs = [
   { company: "카카오뱅크", title: "AI 서비스 품질 및 안전성 평가 담당자", location: "경기 성남시", career: "신입", deadline: "-" },
 ];
 
+// 외부에서 수집한 값이므로 innerHTML 대신 textContent로만 삽입한다.
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
 function renderJobs(containerId, jobs) {
   const container = document.getElementById(containerId);
-  container.innerHTML = jobs.map(job => `
-    <div class="job-card">
-      <p class="job-title">${job.title}</p>
-      <p class="job-company">${job.company}</p>
-      <div class="job-meta">
-        <span class="tag">${job.location}</span>
-        <span class="tag">${job.career}</span>
-        ${job.deadline !== "-" ? `<span class="tag deadline">${job.deadline}</span>` : ""}
-      </div>
-    </div>
-  `).join("");
+  const cards = jobs.map(job => {
+    const card = el("article", "job-card");
+    card.setAttribute("role", "listitem");
+    card.append(el("p", "job-title", job.title), el("p", "job-company", job.company));
+    const meta = el("div", "job-meta");
+    meta.append(el("span", "tag", job.location), el("span", "tag", job.career));
+    if (job.deadline !== "-") meta.append(el("span", "tag deadline", job.deadline));
+    card.append(meta);
+    return card;
+  });
+  container.replaceChildren(...cards);
+}
+
+function renderCount(elementId, total, shown) {
+  document.getElementById(elementId).textContent =
+    `(총 ${total.toLocaleString("ko-KR")}건 중 ${shown}건 표시)`;
 }
 
 renderJobs("saramin-grid", saraminJobs);
 renderJobs("jobkorea-grid", jobkoreaJobs);
+renderCount("saramin-count", 12558, saraminJobs.length);
+renderCount("jobkorea-count", 12126, jobkoreaJobs.length);
 </script>
 
 </body>
